@@ -1,9 +1,16 @@
 from django.views.generic import ListView, DetailView, TemplateView
 from django.views.generic import ArchiveIndexView, YearArchiveView, MonthArchiveView
 from django.views.generic import DayArchiveView, TodayArchiveView
+from django.conf import settings
+from django.db.models import Q
+from django.shortcuts import render
 
 from blog.models import Post
-from django.conf import settings
+from blog.forms import PostSearchForm
+
+
+from django.views.generic import FormView
+
 
 #--- ListView
 class PostLV(ListView):
@@ -70,3 +77,19 @@ class TaggedObjectLV(ListView):
         context['tagname'] = self.kwargs['tag']
         return context
 
+
+#-- FormView
+class SearchFormView(FormView):
+  form_class = PostSearchForm
+  template_name = 'blog/post_search.html'
+
+  def form_valid(self, form):
+    searchWord = form.cleaned_data['search_word']
+    post_list = Post.objects.filter(Q(title__icontains=searchWord) |  Q(description__icontains=searchWord) | Q(content__icontains=searchWord)).distinct()
+    
+    context = {}
+    context['form'] = form
+    context['search_term'] = searchWord
+    context['object_list'] = post_list
+
+    return render(self.request, self.template_name, context)
